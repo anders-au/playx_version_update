@@ -38,25 +38,34 @@ class MethodChannelPlayxVersionUpdate extends PlayxVersionUpdatePlatform {
 
   @override
   Future<PlayxVersionUpdateResult<PlayxAppUpdateAvailability>>
-      getUpdateAvailability() async {
+  getUpdateAvailability() async {
     if (kIsWeb || !Platform.isAndroid) {
       return PlayxVersionUpdateResult<PlayxAppUpdateAvailability>.error(
-          PlatformNotSupportedError());
+        PlatformNotSupportedError(),
+      );
     }
     try {
-      final index =
-          await methodChannel.invokeMethod<num>(_getUpdateAvailability);
-      final availability =
-          PlayxAppUpdateAvailability.fromUpdateAvailability(index);
+      final index = await methodChannel.invokeMethod<num>(
+        _getUpdateAvailability,
+      );
+      final availability = PlayxAppUpdateAvailability.fromUpdateAvailability(
+        index,
+      );
       return PlayxVersionUpdateResult.success(availability);
     } on PlatformException catch (e) {
       return PlayxVersionUpdateResult.error(
-          PlayxVersionUpdateError.fromInAppUpdateErrorCode(
-              e.code, e.message ?? ''));
+        PlayxVersionUpdateError.fromInAppUpdateErrorCode(
+          e.code,
+          e.message ?? '',
+        ),
+      );
     } on Exception catch (e) {
       return PlayxVersionUpdateResult.error(
-          PlayxVersionUpdateError.fromInAppUpdateErrorCode(
-              defaultFailureErrorCode, e.toString()));
+        PlayxVersionUpdateError.fromInAppUpdateErrorCode(
+          defaultFailureErrorCode,
+          e.toString(),
+        ),
+      );
     }
   }
 
@@ -72,12 +81,18 @@ class MethodChannelPlayxVersionUpdate extends PlayxVersionUpdatePlatform {
       return PlayxVersionUpdateResult.success(days);
     } on PlatformException catch (e) {
       return PlayxVersionUpdateResult.error(
-          PlayxVersionUpdateError.fromInAppUpdateErrorCode(
-              e.code, e.message ?? ''));
+        PlayxVersionUpdateError.fromInAppUpdateErrorCode(
+          e.code,
+          e.message ?? '',
+        ),
+      );
     } on Exception catch (e) {
       return PlayxVersionUpdateResult.error(
-          PlayxVersionUpdateError.fromInAppUpdateErrorCode(
-              defaultFailureErrorCode, e.toString()));
+        PlayxVersionUpdateError.fromInAppUpdateErrorCode(
+          defaultFailureErrorCode,
+          e.toString(),
+        ),
+      );
     }
   }
 
@@ -93,18 +108,25 @@ class MethodChannelPlayxVersionUpdate extends PlayxVersionUpdatePlatform {
       return PlayxVersionUpdateResult.success(priority);
     } on PlatformException catch (e) {
       return PlayxVersionUpdateResult.error(
-          PlayxVersionUpdateError.fromInAppUpdateErrorCode(
-              e.code, e.message ?? ''));
+        PlayxVersionUpdateError.fromInAppUpdateErrorCode(
+          e.code,
+          e.message ?? '',
+        ),
+      );
     } on Exception catch (e) {
       return PlayxVersionUpdateResult.error(
-          PlayxVersionUpdateError.fromInAppUpdateErrorCode(
-              defaultFailureErrorCode, e.toString()));
+        PlayxVersionUpdateError.fromInAppUpdateErrorCode(
+          defaultFailureErrorCode,
+          e.toString(),
+        ),
+      );
     }
   }
 
   @override
   Future<PlayxVersionUpdateResult<bool>> isUpdateAllowed(
-      PlayxAppUpdateType type) async {
+    PlayxAppUpdateType type,
+  ) async {
     if (kIsWeb || !Platform.isAndroid) {
       return PlayxVersionUpdateResult<bool>.error(PlatformNotSupportedError());
     }
@@ -112,40 +134,97 @@ class MethodChannelPlayxVersionUpdate extends PlayxVersionUpdatePlatform {
     try {
       final isAllowed =
           await methodChannel.invokeMethod<bool>(_isUpdateAllowed, {
-                _isUpdateAllowedTypeKey: type.index,
-              }) ??
-              false;
+            _isUpdateAllowedTypeKey: type.index,
+          }) ??
+          false;
       return PlayxVersionUpdateResult.success(isAllowed);
     } on PlatformException catch (e) {
       return PlayxVersionUpdateResult.error(
-          PlayxVersionUpdateError.fromInAppUpdateErrorCode(
-              e.code, e.message ?? ''));
+        PlayxVersionUpdateError.fromInAppUpdateErrorCode(
+          e.code,
+          e.message ?? '',
+        ),
+      );
     } on Exception catch (e) {
       return PlayxVersionUpdateResult.error(
-          PlayxVersionUpdateError.fromInAppUpdateErrorCode(
-              defaultFailureErrorCode, e.toString()));
+        PlayxVersionUpdateError.fromInAppUpdateErrorCode(
+          defaultFailureErrorCode,
+          e.toString(),
+        ),
+      );
     }
   }
 
   @override
-  Future<PlayxVersionUpdateResult<bool>> startImmediateUpdate() async {
+  Future<PlayxVersionUpdateResult<PlayxUpdateOffer>> getUpdateOffer() async {
+    if (kIsWeb || !Platform.isAndroid) {
+      return PlayxVersionUpdateResult.error(PlatformNotSupportedError());
+    }
+    try {
+      final response = await methodChannel.invokeMapMethod<String, Object?>(
+        'GET_UPDATE_OFFER',
+      );
+      final status = response?['status'];
+      final code = response?['versionCode'];
+      return PlayxVersionUpdateResult.success((
+        availability: PlayxAppUpdateAvailability.fromUpdateAvailability(
+          status is int ? status : null,
+        ),
+        versionCode: code is int ? code : null,
+        immediateUpdateAllowed: response?['canLaunch'] == true,
+      ));
+    } on PlatformException catch (error) {
+      return PlayxVersionUpdateResult.error(
+        PlayxVersionUpdateError.fromInAppUpdateErrorCode(
+          error.code,
+          error.message ?? '',
+        ),
+      );
+    } on Exception catch (error) {
+      return PlayxVersionUpdateResult.error(
+        DefaultFailureError(errorMsg: error.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<PlayxVersionUpdateResult<bool>> startImmediateUpdate() =>
+      _startImmediate();
+
+  @override
+  Future<PlayxVersionUpdateResult<bool>> startImmediateUpdateForVersion(
+    int versionCode,
+  ) => _startImmediate(versionCode);
+
+  Future<PlayxVersionUpdateResult<bool>> _startImmediate([
+    int? versionCode,
+  ]) async {
     if (kIsWeb || !Platform.isAndroid) {
       return PlayxVersionUpdateResult<bool>.error(PlatformNotSupportedError());
     }
 
     try {
       final isStarted =
-          await methodChannel.invokeMethod<bool>(_startImmediateUpdate) ??
-              false;
+          await methodChannel.invokeMethod<bool>(
+            _startImmediateUpdate,
+            versionCode == null ? null : {'expectedVersionCode': versionCode},
+          ) ??
+          false;
       return PlayxVersionUpdateResult.success(isStarted);
     } on PlatformException catch (e) {
       return PlayxVersionUpdateResult.error(
-          PlayxVersionUpdateError.fromInAppUpdateErrorCode(
-              e.code, e.message ?? ''));
+        PlayxVersionUpdateError.fromInAppUpdateErrorCode(
+          e.code,
+          e.message ?? '',
+        ),
+      );
     } on Exception catch (e) {
       return PlayxVersionUpdateResult.error(
-          PlayxVersionUpdateError.fromInAppUpdateErrorCode(
-              defaultFailureErrorCode, e.toString()));
+        PlayxVersionUpdateError.fromInAppUpdateErrorCode(
+          defaultFailureErrorCode,
+          e.toString(),
+        ),
+      );
     }
   }
 
@@ -161,12 +240,18 @@ class MethodChannelPlayxVersionUpdate extends PlayxVersionUpdatePlatform {
       return PlayxVersionUpdateResult.success(isStarted);
     } on PlatformException catch (e) {
       return PlayxVersionUpdateResult.error(
-          PlayxVersionUpdateError.fromInAppUpdateErrorCode(
-              e.code, e.message ?? ''));
+        PlayxVersionUpdateError.fromInAppUpdateErrorCode(
+          e.code,
+          e.message ?? '',
+        ),
+      );
     } on Exception catch (e) {
       return PlayxVersionUpdateResult.error(
-          PlayxVersionUpdateError.fromInAppUpdateErrorCode(
-              defaultFailureErrorCode, e.toString()));
+        PlayxVersionUpdateError.fromInAppUpdateErrorCode(
+          defaultFailureErrorCode,
+          e.toString(),
+        ),
+      );
     }
   }
 
@@ -192,40 +277,54 @@ class MethodChannelPlayxVersionUpdate extends PlayxVersionUpdatePlatform {
     try {
       final isCompleted =
           await methodChannel.invokeMethod<bool>(_completeFlexibleUpdate) ??
-              false;
+          false;
       return PlayxVersionUpdateResult.success(isCompleted);
     } on PlatformException catch (e) {
       return PlayxVersionUpdateResult.error(
-          PlayxVersionUpdateError.fromInAppUpdateErrorCode(
-              e.code, e.message ?? ''));
+        PlayxVersionUpdateError.fromInAppUpdateErrorCode(
+          e.code,
+          e.message ?? '',
+        ),
+      );
     } on Exception catch (e) {
       return PlayxVersionUpdateResult.error(
-          PlayxVersionUpdateError.fromInAppUpdateErrorCode(
-              defaultFailureErrorCode, e.toString()));
+        PlayxVersionUpdateError.fromInAppUpdateErrorCode(
+          defaultFailureErrorCode,
+          e.toString(),
+        ),
+      );
     }
   }
 
   @override
   Future<PlayxVersionUpdateResult<bool>>
-      isFlexibleUpdateNeedToBeInstalled() async {
+  isFlexibleUpdateNeedToBeInstalled() async {
     if (kIsWeb || !Platform.isAndroid) {
       return PlayxVersionUpdateResult<bool>.error(PlatformNotSupportedError());
     }
 
     try {
-      final isNeeded = await methodChannel
-              .invokeMethod<bool>(_isFlexibleUpdateNeedToBeInstalled) ??
+      final isNeeded =
+          await methodChannel.invokeMethod<bool>(
+            _isFlexibleUpdateNeedToBeInstalled,
+          ) ??
           false;
 
       return PlayxVersionUpdateResult.success(isNeeded);
     } on PlatformException catch (e) {
       return PlayxVersionUpdateResult.error(
-          PlayxVersionUpdateError.fromInAppUpdateErrorCode(
-              e.code, e.message ?? ''));
+        PlayxVersionUpdateError.fromInAppUpdateErrorCode(
+          e.code,
+          e.message ?? '',
+        ),
+      );
     } on Exception catch (e) {
       return PlayxVersionUpdateResult.error(
-          PlayxVersionUpdateError.fromInAppUpdateErrorCode(
-              defaultFailureErrorCode, e.toString()));
+        PlayxVersionUpdateError.fromInAppUpdateErrorCode(
+          defaultFailureErrorCode,
+          e.toString(),
+        ),
+      );
     }
   }
 
@@ -241,12 +340,18 @@ class MethodChannelPlayxVersionUpdate extends PlayxVersionUpdatePlatform {
       return PlayxVersionUpdateResult.success(isRefreshed);
     } on PlatformException catch (e) {
       return PlayxVersionUpdateResult.error(
-          PlayxVersionUpdateError.fromInAppUpdateErrorCode(
-              e.code, e.message ?? ''));
+        PlayxVersionUpdateError.fromInAppUpdateErrorCode(
+          e.code,
+          e.message ?? '',
+        ),
+      );
     } on Exception catch (e) {
       return PlayxVersionUpdateResult.error(
-          PlayxVersionUpdateError.fromInAppUpdateErrorCode(
-              defaultFailureErrorCode, e.toString()));
+        PlayxVersionUpdateError.fromInAppUpdateErrorCode(
+          defaultFailureErrorCode,
+          e.toString(),
+        ),
+      );
     }
   }
 }
