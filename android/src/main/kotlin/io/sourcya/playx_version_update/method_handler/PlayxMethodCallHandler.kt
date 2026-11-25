@@ -45,6 +45,7 @@ class PlayxMethodCallHandler : MethodChannel.MethodCallHandler{
 
         when (call.method) {
             GET_UPDATE_AVAILABILITY -> getUpdateAvailability(result)
+            GET_UPDATE_OFFER -> getUpdateOffer(result)
 
             GET_UPDATE_STALENESS_DAYS -> getUpdateStalenessDays(result)
 
@@ -52,7 +53,7 @@ class PlayxMethodCallHandler : MethodChannel.MethodCallHandler{
 
             IS_UPDATE_ALLOWED -> isUpdateAllowed(call, result)
 
-            START_IMMEDIATE_UPDATE -> startImmediateUpdate(result)
+            START_IMMEDIATE_UPDATE -> startImmediateUpdate(result, call.argument<Int>("expectedVersionCode"))
             START_FLEXIBLE_UPDATE -> startFlexibleUpdate(result)
 
             COMPLETE_FLEXIBLE_UPDATE -> completeFlexibleUpdate(result)
@@ -82,6 +83,16 @@ class PlayxMethodCallHandler : MethodChannel.MethodCallHandler{
 
     }
 
+
+    private fun getUpdateOffer(result: MethodChannel.Result) {
+        coroutineScope.launch {
+            try {
+                result.success(updateManger.getUpdateOffer())
+            } catch (e: Exception) {
+                handleMethodException(e, result)
+            }
+        }
+    }
 
     // check the number of days since the update became available on the Play Store
     //If an update is available or in progress, this method returns the number of days
@@ -139,7 +150,7 @@ class PlayxMethodCallHandler : MethodChannel.MethodCallHandler{
     //ActivityNotFoundException : When the user started the update flow from background.
     //PlayxRequestCanceledException : The user denied or canceled the update.
     //PlayxInAppUpdateFailed: The flow failed either during the user confirmation, the download, or the installation.
-    private fun startImmediateUpdate(result: MethodChannel.Result) {
+    private fun startImmediateUpdate(result: MethodChannel.Result, expectedVersionCode: Int?) {
         startedImmediateUpdateResult = null
         coroutineScope.launch {
             try {
@@ -149,7 +160,7 @@ class PlayxMethodCallHandler : MethodChannel.MethodCallHandler{
                     return@launch
                 }
                 startedImmediateUpdateResult = result
-                val res= updateManger.startImmediateUpdate(activity!!)
+                val res= updateManger.startImmediateUpdate(activity!!, expectedVersionCode)
                 result.success(res)
             } catch (e: Exception) {
                 handleMethodException(e, result)
@@ -291,9 +302,9 @@ class PlayxMethodCallHandler : MethodChannel.MethodCallHandler{
 
     private fun handleMethodException(e: Exception, result: MethodChannel.Result) {
         if (e is PlayxUpdateException) {
-            result.error(e.errorCode(), e.message, e)
+            result.error(e.errorCode(), e.message, null)
         } else {
-            result.error("DEFAULT_FAILURE_ERROR", e.message, e)
+            result.error("DEFAULT_FAILURE_ERROR", e.message, null)
         }
     }
 
@@ -303,6 +314,7 @@ class PlayxMethodCallHandler : MethodChannel.MethodCallHandler{
         const val PLAYX_METHOD_CHANNEL_NAME = "PLAYX_METHOD_CHANNEL_NAME"
         const val DOWNLOAD_EVENT_CHANNEL_NAME = "DOWNLOAD_EVENT_CHANNEL_NAME"
 
+        const val GET_UPDATE_OFFER = "GET_UPDATE_OFFER"
         const val GET_UPDATE_AVAILABILITY = "GET_UPDATE_AVAILABILITY"
 
         const val GET_UPDATE_STALENESS_DAYS = "GET_UPDATE_STALENESS_DAYS"

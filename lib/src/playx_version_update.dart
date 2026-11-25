@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:playx_version_update/playx_version_update.dart';
 import 'package:playx_version_update/src/platform/playx_version_update_platform_interface.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import 'core/version_checker/version_checker.dart';
 
 /// The main entry point for the Playx Version Update package.
@@ -55,9 +56,7 @@ abstract class PlayxVersionUpdate {
   static Future<PlayxVersionUpdateResult<PlayxVersionUpdateInfo>> checkVersion({
     PlayxUpdateOptions options = const PlayxUpdateOptions(),
   }) async {
-    return _versionChecker.checkVersion(
-      options: options,
-    );
+    return _versionChecker.checkVersion(options: options);
   }
 
   /// Opens the app's page on the Google Play Store or Apple App Store.
@@ -68,21 +67,26 @@ abstract class PlayxVersionUpdate {
   ///
   /// Returns a [PlayxVersionUpdateResult] with a `bool` indicating whether the
   /// launch was successful.
-  static Future<PlayxVersionUpdateResult<bool>> openStore(
-      {required String storeUrl,
-      LaunchMode launchMode = LaunchMode.externalApplication}) async {
+  static Future<PlayxVersionUpdateResult<bool>> openStore({
+    required String storeUrl,
+    LaunchMode launchMode = LaunchMode.externalApplication,
+  }) async {
     final Uri url = Uri.parse(storeUrl);
     if (await canLaunchUrl(url)) {
       try {
         final isLaunched = await launchUrl(url, mode: launchMode);
         return PlayxVersionUpdateResult.success(isLaunched);
       } catch (e) {
-        return PlayxVersionUpdateResult.error(DefaultFailureError(
-            errorMsg: 'Could not launch store. : ${e.toString()}'));
+        return PlayxVersionUpdateResult.error(
+          DefaultFailureError(
+            errorMsg: 'Could not launch store. : ${e.toString()}',
+          ),
+        );
       }
     } else {
       return const PlayxVersionUpdateResult.error(
-          DefaultFailureError(errorMsg: 'Could not launch store.'));
+        DefaultFailureError(errorMsg: 'Could not launch store.'),
+      );
     }
   }
 
@@ -135,8 +139,12 @@ abstract class PlayxVersionUpdate {
     return result.map(
       success: (info) {
         if (!info.canUpdate) {
-          return PlayxVersionUpdateResult.error(PlayxVersionCantUpdateError(
-              currentVersion: info.localVersion, newVersion: info.newVersion));
+          return PlayxVersionUpdateResult.error(
+            PlayxVersionCantUpdateError(
+              currentVersion: info.localVersion,
+              newVersion: info.newVersion,
+            ),
+          );
         }
         _presentUpdateUI(context, info, uiOptions);
         return const PlayxVersionUpdateResult.success(true);
@@ -256,8 +264,12 @@ abstract class PlayxVersionUpdate {
     return result.map(
       success: (info) {
         if (!info.canUpdate) {
-          return PlayxVersionUpdateResult.error(PlayxVersionCantUpdateError(
-              currentVersion: info.localVersion, newVersion: info.newVersion));
+          return PlayxVersionUpdateResult.error(
+            PlayxVersionCantUpdateError(
+              currentVersion: info.localVersion,
+              newVersion: info.newVersion,
+            ),
+          );
         }
         _presentUpdateUI(context, info, iosUiOptions);
         return const PlayxVersionUpdateResult.success(true);
@@ -297,10 +309,8 @@ abstract class PlayxVersionUpdate {
       showDialog(
         context: context,
         barrierDismissible: isUiDismissible,
-        builder: (_) => PlayxUpdateDialog(
-          versionUpdateInfo: info,
-          uiOptions: uiOptions,
-        ),
+        builder: (_) =>
+            PlayxUpdateDialog(versionUpdateInfo: info, uiOptions: uiOptions),
       );
     }
   }
@@ -310,9 +320,20 @@ abstract class PlayxVersionUpdate {
   /// Returns a [PlayxVersionUpdateResult] indicating whether an update is available,
   /// along with its [PlayxAppUpdateAvailability] status on success.
   static Future<PlayxVersionUpdateResult<PlayxAppUpdateAvailability>>
-      getUpdateAvailability() async {
+  getUpdateAvailability() async {
     return PlayxVersionUpdatePlatform.instance.getUpdateAvailability();
   }
+
+  /// Returns the account-specific Android offer and its version code.
+  static Future<PlayxVersionUpdateResult<PlayxUpdateOffer>> getUpdateOffer() =>
+      PlayxVersionUpdatePlatform.instance.getUpdateOffer();
+
+  /// Starts an immediate Android update only if Play still offers [versionCode].
+  static Future<PlayxVersionUpdateResult<bool>> startImmediateUpdateForVersion(
+    int versionCode,
+  ) => PlayxVersionUpdatePlatform.instance.startImmediateUpdateForVersion(
+    versionCode,
+  );
 
   /// Retrieves the number of days since an update became available on the Play Store.
   ///
@@ -343,8 +364,9 @@ abstract class PlayxVersionUpdate {
   /// can proceed based on current device and Play Store conditions.
   ///
   /// Returns a [PlayxVersionUpdateResult] with a [bool] indicating if the update is allowed on success.
-  static Future<PlayxVersionUpdateResult<bool>> isUpdateAllowed(
-      {required PlayxAppUpdateType type}) async {
+  static Future<PlayxVersionUpdateResult<bool>> isUpdateAllowed({
+    required PlayxAppUpdateType type,
+  }) async {
     return PlayxVersionUpdatePlatform.instance.isUpdateAllowed(type);
   }
 
@@ -471,7 +493,7 @@ abstract class PlayxVersionUpdate {
   /// Returns a [PlayxVersionUpdateResult] with `true` if a flexible update is downloaded and ready to be installed,
   /// and `false` otherwise, on success.
   static Future<PlayxVersionUpdateResult<bool>>
-      isFlexibleUpdateNeedToBeInstalled() {
+  isFlexibleUpdateNeedToBeInstalled() {
     return PlayxVersionUpdatePlatform.instance
         .isFlexibleUpdateNeedToBeInstalled();
   }

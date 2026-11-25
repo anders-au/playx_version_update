@@ -29,9 +29,10 @@ abstract class PlayxVersionUpdatePlatform extends PlatformInterface {
   //Check for update availability:
   //checks if there is an update available for your app.
   Future<PlayxVersionUpdateResult<PlayxAppUpdateAvailability>>
-      getUpdateAvailability() async {
+  getUpdateAvailability() async {
     return PlayxVersionUpdateResult<PlayxAppUpdateAvailability>.error(
-        PlatformNotSupportedError());
+      PlatformNotSupportedError(),
+    );
   }
 
   // check the number of days since the update became available on the Play Store
@@ -55,7 +56,8 @@ abstract class PlayxVersionUpdatePlatform extends PlatformInterface {
 
   // Checks that the platform will allow the specified type of update.
   Future<PlayxVersionUpdateResult<bool>> isUpdateAllowed(
-      PlayxAppUpdateType type) async {
+    PlayxAppUpdateType type,
+  ) async {
     return PlayxVersionUpdateResult<bool>.error(PlatformNotSupportedError());
   }
 
@@ -68,6 +70,13 @@ abstract class PlayxVersionUpdatePlatform extends PlatformInterface {
   Future<PlayxVersionUpdateResult<bool>> startImmediateUpdate() async {
     return PlayxVersionUpdateResult<bool>.error(PlatformNotSupportedError());
   }
+
+  Future<PlayxVersionUpdateResult<PlayxUpdateOffer>> getUpdateOffer() async =>
+      PlayxVersionUpdateResult.error(PlatformNotSupportedError());
+
+  Future<PlayxVersionUpdateResult<bool>> startImmediateUpdateForVersion(
+    int versionCode,
+  ) async => PlayxVersionUpdateResult.error(PlatformNotSupportedError());
 
   //Starts Flexible update flow.
   //In the immediate flow, the method returns one of the following values:
@@ -98,7 +107,7 @@ abstract class PlayxVersionUpdatePlatform extends PlatformInterface {
 
   //Whether or not the flexible update is ready to install .
   Future<PlayxVersionUpdateResult<bool>>
-      isFlexibleUpdateNeedToBeInstalled() async {
+  isFlexibleUpdateNeedToBeInstalled() async {
     return PlayxVersionUpdateResult<bool>.error(PlatformNotSupportedError());
   }
 

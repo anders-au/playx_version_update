@@ -38,7 +38,9 @@ sealed class PlayxVersionUpdateError {
   /// Factory constructor to create a [PlayxVersionUpdateError] from a
   /// platform-specific error code and message, typically from Android's in-app update.
   factory PlayxVersionUpdateError.fromInAppUpdateErrorCode(
-      String errorCode, String errorMessage) {
+    String errorCode,
+    String errorMessage,
+  ) {
     // Check for specific PlayxInstallError codes first
     if (errorCode.startsWith('INSTALL_')) {
       return PlayxInstallError.fromKotlinErrorCode(errorCode, errorMessage);
@@ -53,10 +55,21 @@ sealed class PlayxVersionUpdateError {
         PlayxInAppUpdateCanceledError(),
       _playxInAppUpdateFailedErrorCode => PlayxInAppUpdateFailedError(),
       _platformNotSupportedErrorCode => PlatformNotSupportedError(),
+      'PLAYX_OFFER_CHANGED' ||
+      'PLAYX_UPDATE_NOT_AVAILABLE' => const PlayxUpdateOfferChangedError(),
       defaultFailureErrorCode => DefaultFailureError(errorMsg: errorMessage),
-      _ => DefaultFailureError(errorMsg: errorMessage)
+      _ => DefaultFailureError(errorMsg: errorMessage),
     };
   }
+}
+
+/// The offer passed to the immediate flow is no longer actionable.
+final class PlayxUpdateOfferChangedError extends PlayxVersionUpdateError {
+  const PlayxUpdateOfferChangedError();
+  @override
+  String get errorCode => 'PLAYX_OFFER_CHANGED';
+  @override
+  String get message => 'The Android update offer changed.';
 }
 
 /// Represents a network-related error encountered during Playx Version Update operations.
@@ -98,7 +111,9 @@ sealed class PlayxInstallError extends PlayxVersionUpdateError {
   /// Factory constructor to create a [PlayxInstallError] instance from
   /// a Kotlin-provided error code and message.
   factory PlayxInstallError.fromKotlinErrorCode(
-      String errorCode, String errorMessage) {
+    String errorCode,
+    String errorMessage,
+  ) {
     switch (errorCode) {
       case _installApiNotAvailableErrorCode:
         return const InstallApiNotAvailableError();
@@ -120,10 +135,14 @@ sealed class PlayxInstallError extends PlayxVersionUpdateError {
         return const InstallPlayStoreNotFoundError();
       case _installUnknownErrorCode:
         return InstallUnknownError(
-            errorCode: _installUnknownErrorCode, errorMessage: errorMessage);
+          errorCode: _installUnknownErrorCode,
+          errorMessage: errorMessage,
+        );
       default:
         return InstallUnknownError(
-            errorCode: errorCode, errorMessage: errorMessage);
+          errorCode: errorCode,
+          errorMessage: errorMessage,
+        );
     }
   }
 }
@@ -132,32 +151,40 @@ sealed class PlayxInstallError extends PlayxVersionUpdateError {
 /// This might happen if the device doesn't support the feature or has an outdated Play Store.
 class InstallApiNotAvailableError extends PlayxInstallError {
   const InstallApiNotAvailableError()
-      : super._(_installApiNotAvailableErrorCode,
-            "In-app updates are not supported on this device. Please ensure your Google Play Store is up to date.");
+    : super._(
+        _installApiNotAvailableErrorCode,
+        "In-app updates are not supported on this device. Please ensure your Google Play Store is up to date.",
+      );
 }
 
 /// The app is not genuinely owned by any user on this device.
 /// This typically occurs if the app was installed from an unofficial source (side-loaded APK).
 class InstallAppNotOwnedError extends PlayxInstallError {
   const InstallAppNotOwnedError()
-      : super._(_installAppNotOwnedErrorCode,
-            "The app is not genuinely owned by a user on this device. In-app updates require the app to be installed from the Google Play Store.");
+    : super._(
+        _installAppNotOwnedErrorCode,
+        "The app is not genuinely owned by a user on this device. In-app updates require the app to be installed from the Google Play Store.",
+      );
 }
 
 /// The in-app update has not been fully downloaded yet.
 /// For flexible updates, ensure the download is complete before attempting to install.
 class InstallDownloadNotPresentError extends PlayxInstallError {
   const InstallDownloadNotPresentError()
-      : super._(_installDownloadNotPresentErrorCode,
-            "The update download is not complete. Please wait for the download to finish before trying to install.");
+    : super._(
+        _installDownloadNotPresentErrorCode,
+        "The update download is not complete. Please wait for the download to finish before trying to install.",
+      );
 }
 
 /// An in-app update installation is already in progress.
 /// Please wait for the current update to complete or restart the app.
 class InstallInProgressError extends PlayxInstallError {
   const InstallInProgressError()
-      : super._(_installInProgressErrorCode,
-            "An update installation is already running. Please wait for it to finish or restart the app if it's stuck.");
+    : super._(
+        _installInProgressErrorCode,
+        "An update installation is already running. Please wait for it to finish or restart the app if it's stuck.",
+      );
 }
 
 /// The in-app update download or installation isn't allowed right now.
@@ -170,51 +197,61 @@ class InstallInProgressError extends PlayxInstallError {
 /// Ensure your app came from a Play Store test track (like Internal Testing or Internal App Sharing).
 class InstallNotAllowedError extends PlayxInstallError {
   const InstallNotAllowedError()
-      : super._(
-            _installNotAllowedErrorCode,
-            "The update cannot be installed at this moment. This might be due to low device storage, "
-            "low battery, device overheating, network restrictions, or system security policies. "
-            "Additionally, if the app was installed via a side-loaded APK, the Play Store won't recognize it as eligible"
-            " for in-app updates, leading to this error. Please ensure the app was installed directly from the Google Play Store.");
+    : super._(
+        _installNotAllowedErrorCode,
+        "The update cannot be installed at this moment. This might be due to low device storage, "
+        "low battery, device overheating, network restrictions, or system security policies. "
+        "Additionally, if the app was installed via a side-loaded APK, the Play Store won't recognize it as eligible"
+        " for in-app updates, leading to this error. Please ensure the app was installed directly from the Google Play Store.",
+      );
 }
 
 /// The in-app update is unavailable for this specific user or device.
 /// This might happen for restricted profiles or secondary users.
 class InstallUnavailableError extends PlayxInstallError {
   const InstallUnavailableError()
-      : super._(_installUnavailableErrorCode,
-            "The update is unavailable for this user profile or device configuration. Please try with a primary user account if applicable.");
+    : super._(
+        _installUnavailableErrorCode,
+        "The update is unavailable for this user profile or device configuration. Please try with a primary user account if applicable.",
+      );
 }
 
 /// An unexpected internal error occurred within the Google Play Store during installation.
 /// Please try again later.
 class InstallInternalError extends PlayxInstallError {
   const InstallInternalError()
-      : super._(_installInternalErrorCode,
-            "An unexpected error occurred within the Google Play Store during installation. Please try again later.");
+    : super._(
+        _installInternalErrorCode,
+        "An unexpected error occurred within the Google Play Store during installation. Please try again later.",
+      );
 }
 
 /// The update request sent by the app is malformed or invalid.
 /// This indicates an issue with how the app requested the update.
 class InstallInvalidRequestError extends PlayxInstallError {
   const InstallInvalidRequestError()
-      : super._(_installInvalidRequestErrorCode,
-            "The update request was invalid. This may be an issue with the app. Please report this if it persists.");
+    : super._(
+        _installInvalidRequestErrorCode,
+        "The update request was invalid. This may be an issue with the app. Please report this if it persists.",
+      );
 }
 
 /// The Google Play Store app is either not installed or is not the official version.
 class InstallPlayStoreNotFoundError extends PlayxInstallError {
   const InstallPlayStoreNotFoundError()
-      : super._(_installPlayStoreNotFoundErrorCode,
-            "The Google Play Store app is not found or is not the official version on this device. In-app updates cannot proceed without it.");
+    : super._(
+        _installPlayStoreNotFoundErrorCode,
+        "The Google Play Store app is not found or is not the official version on this device. In-app updates cannot proceed without it.",
+      );
 }
 
 /// Represents an unhandled or unexpected InstallErrorCode from Kotlin.
 /// This captures any future error codes or those not explicitly mapped.
 class InstallUnknownError extends PlayxInstallError {
-  const InstallUnknownError(
-      {required String errorCode, required String errorMessage})
-      : super._(errorCode, errorMessage);
+  const InstallUnknownError({
+    required String errorCode,
+    required String errorMessage,
+  }) : super._(errorCode, errorMessage);
 }
 
 /// Error indicating the current platform (e.g., iOS, Web) does not support the requested operation.
@@ -300,8 +337,10 @@ class PlayxVersionCantUpdateError extends PlayxVersionUpdateError {
   final String currentVersion;
   final String newVersion;
 
-  const PlayxVersionCantUpdateError(
-      {required this.currentVersion, required this.newVersion});
+  const PlayxVersionCantUpdateError({
+    required this.currentVersion,
+    required this.newVersion,
+  });
 
   @override
   String get message =>

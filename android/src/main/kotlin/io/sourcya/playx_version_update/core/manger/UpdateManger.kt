@@ -7,6 +7,7 @@ import io.sourcya.playx_version_update.core.model.PlayxAppUpdateType
 import io.sourcya.playx_version_update.core.model.PlayxUnknownUpdateType
 import io.sourcya.playx_version_update.core.model.PlayxUpdateInProgress
 import io.sourcya.playx_version_update.core.model.PlayxUpdateNotAllowed
+import io.sourcya.playx_version_update.core.model.PlayxOfferChanged
 import io.sourcya.playx_version_update.core.model.PlayxUpdateNotAvailable
 
 
@@ -43,33 +44,35 @@ class UpdateManger( context: Context) {
     private val coroutineScope = CoroutineScope(Dispatchers.IO + job)
     private var currentUpdateType : PlayxAppUpdateType? = null
 
-    suspend fun getUpdateAvailability(): AppUpdateAvailability =
+    private suspend fun readUpdateInfo(): AppUpdateInfo =
         suspendCancellableCoroutine { continuation ->
-            // Checks that the platform will allow the specified type of update.
-            val appUpdateInfoTask = appUpdateManager.appUpdateInfo
-
-            appUpdateInfoTask.addOnSuccessListener { appUpdateInfo ->
-                val updateAvailability =
-                    AppUpdateAvailability.fromUpdateAvailability(appUpdateInfo.updateAvailability())
-                continuation.resume(updateAvailability)
+            appUpdateManager.appUpdateInfo.addOnSuccessListener {
+                continuation.resume(it)
             }.addOnFailureListener {
-                if(it is InstallException){
-                    val error = PlayxInstallError.fromStatusCode(it.errorCode);
-                    continuation.resumeWithException(error);
-                    return@addOnFailureListener
-                }else{
-                    continuation.resumeWithException(it)
-                }
+                continuation.resumeWithException(
+                    if (it is InstallException) PlayxInstallError.fromStatusCode(it.errorCode) else it
+                )
             }.addOnCanceledListener {
                 continuation.resumeWithException(PlayxUpdateCanceledException())
             }
         }
 
+    suspend fun getUpdateAvailability(): AppUpdateAvailability =
+        AppUpdateAvailability.fromUpdateAvailability(readUpdateInfo().updateAvailability())
 
-    // check the number of days since the update became available on the Play Store
-    //If an update is available or in progress, this method returns the number of days
-    // since the Google Play Store app on the user's device has learnt about an available update.
-    //If update is not available, or if staleness information is unavailable, this method returns -1.
+    suspend fun getUpdateOffer(): Map<String, Any?> {
+        val info = readUpdateInfo()
+        val status = info.updateAvailability()
+        val hasVersion = status == UpdateAvailability.UPDATE_AVAILABLE ||
+            status == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS
+        return mapOf(
+            "status" to AppUpdateAvailability.fromUpdateAvailability(status).ordinal,
+            "versionCode" to if (hasVersion) info.availableVersionCode() else null,
+            "canLaunch" to (status == UpdateAvailability.UPDATE_AVAILABLE &&
+                info.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE)),
+        )
+    }
+
     suspend fun getUpdateStalenessDays(): Int = suspendCancellableCoroutine { continuation ->
         val appUpdateInfoTask = appUpdateManager.appUpdateInfo
 
@@ -163,11 +166,18 @@ class UpdateManger( context: Context) {
             }
         }
 
-    suspend fun startImmediateUpdate(activity: Activity): Boolean =
+    suspend fun startImmediateUpdate(activity: Activity, expectedVersionCode: Int? = null): Boolean =
         suspendCancellableCoroutine { continuation ->
             val appUpdateInfoTask = appUpdateManager.appUpdateInfo
             appUpdateInfoTask.addOnSuccessListener { appUpdateInfo ->
 
+                if (expectedVersionCode != null &&
+                    (appUpdateInfo.updateAvailability() != UpdateAvailability.UPDATE_AVAILABLE ||
+                        appUpdateInfo.availableVersionCode() != expectedVersionCode)
+                ) {
+                    continuation.resumeWithException(PlayxOfferChanged())
+                    return@addOnSuccessListener
+                }
                 when (appUpdateInfo.updateAvailability()) {
                     UpdateAvailability.UPDATE_AVAILABLE -> {
                         val isAllowed = appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE)
@@ -200,6 +210,8 @@ class UpdateManger( context: Context) {
 
                                 continuation.resumeWithException(e)
                             }
+                        } else {
+                            continuation.resumeWithException(PlayxUpdateNotAvailable())
                         }
                     }
 

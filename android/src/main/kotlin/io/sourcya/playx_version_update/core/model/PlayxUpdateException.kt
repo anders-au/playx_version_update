@@ -210,3 +210,6 @@ sealed class PlayxInstallError(
         }
     }
 }
+class PlayxOfferChanged : PlayxUpdateException() {
+    override fun errorCode() = "PLAYX_OFFER_CHANGED"
+}
